@@ -3,10 +3,11 @@ import random
 import math
 from functools import partial
 
+from torch.utils.data import ConcatDataset
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
-
+from data_loaders import dataloader
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
@@ -28,9 +29,11 @@ import sys
 import shutil
 from copy import deepcopy
 
+
 def requires_grad(model, flag=True):
     for p in model.parameters():
         p.requires_grad = flag
+
 
 def accumulate(model1, model2, decay=0.999):
     par1 = dict(model1.named_parameters())
@@ -39,10 +42,12 @@ def accumulate(model1, model2, decay=0.999):
     for k in par1.keys():
         par1[k].data.mul_(decay).add_(1 - decay, par2[k].data)
 
+
 def adjust_lr(optimizer, lr):
     for group in optimizer.param_groups:
         mult = group.get('mult', 1)
         group['lr'] = lr * mult
+
 
 def get_first_n_images(loader, n_images):
     n = 0
@@ -54,37 +59,41 @@ def get_first_n_images(loader, n_images):
     real_samples = torch.cat(samples, dim=0)[:n_images]
     return real_samples
 
+
 def log_real_images(loader, logger, i, step, n_images=64):
     real_samples = get_first_n_images(loader, n_images)
     logger.log_images(real_samples, tag='real_samples', step=i, epoch=step)
 
+
 def save(path, generator, g_running, discriminator, g_optimizer, d_optimizer, alpha, step):
     to_save_dict = {
-                    'generator': generator.module.generator.state_dict(),
-                    'discriminator': discriminator.module.state_dict(),
-                    'g_optimizer': g_optimizer.state_dict(),
-                    'd_optimizer': d_optimizer.state_dict(),
-                    'generator_running': g_running.generator.state_dict(),
-                    'alpha': alpha,
-                    'step': step,
+        'generator': generator.module.generator.state_dict(),
+        'discriminator': discriminator.module.state_dict(),
+        'g_optimizer': g_optimizer.state_dict(),
+        'd_optimizer': d_optimizer.state_dict(),
+        'generator_running': g_running.generator.state_dict(),
+        'alpha': alpha,
+        'step': step,
     }
-    
+
     torch.save(to_save_dict, path)
+
 
 def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logger, log_dir, step=None, gen_every=100):
     if step is None:
         step = int(math.log2(args.init_size)) - 2
     resolution = 4 * 2 ** step
     loader = sample_data(
-        dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers, org_to_crop=args.org_to_crop,
+        dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
+        org_to_crop=args.org_to_crop,
         shuffle=True, drop_last=False
     )
     data_loader = iter(loader)
-    
+
     # log_real_images(loader, logger, 0, step)
 
     adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
-    adjust_lr(d_optimizer, args.lr_disc_mult*args.lr.get(resolution, 0.001))
+    adjust_lr(d_optimizer, args.lr_disc_mult * args.lr.get(resolution, 0.001))
 
     pbar = tqdm(range(3_000_000))
 
@@ -113,8 +122,9 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
 
         if used_sample > args.phase * 2:
             step += 1
-            save(f'{log_dir}/train_step-{step}.model', generator, g_running, discriminator, g_optimizer, d_optimizer, alpha, step-1)
-            
+            save(f'{log_dir}/train_step-{step}.model', generator, g_running, discriminator, g_optimizer, d_optimizer,
+                 alpha, step - 1)
+
             if step > int(math.log2(args.max_size)) - 2:
                 break
             else:
@@ -124,14 +134,15 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             resolution = 4 * 2 ** step
 
             loader = sample_data(
-                dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers, org_to_crop=args.org_to_crop, drop_last=False, 
+                dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
+                org_to_crop=args.org_to_crop, drop_last=False,
             )
             log_real_images(loader, logger, i, step)
 
             data_loader = iter(loader)
             adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
-            adjust_lr(d_optimizer, args.lr_disc_mult*args.lr.get(resolution, 0.001))
-        
+            adjust_lr(d_optimizer, args.lr_disc_mult * args.lr.get(resolution, 0.001))
+
         # Discriminator - real images
         try:
             real_image, label = next(data_loader)
@@ -189,7 +200,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
                 outputs=hat_predict.sum(), inputs=x_hat, create_graph=True
             )[0]
             grad_penalty = (
-                (grad_x_hat.view(grad_x_hat.size(0), -1).norm(2, dim=1) - 1) ** 2
+                    (grad_x_hat.view(grad_x_hat.size(0), -1).norm(2, dim=1) - 1) ** 2
             ).mean()
             grad_penalty = 10 * grad_penalty
             grad_penalty.backward()
@@ -199,7 +210,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             metrics['lossD_fake'] = fake_predict.item()
             metrics['lossD'] = fake_predict.item() - real_predict.item()
             metrics['grad_penalty'] = grad_loss_val
-    
+
         elif args.loss == 'r1':
             raise NotImplementedError
 
@@ -255,7 +266,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             img_keys = ['rendered', 'bg']
             if perturbed_outputs[0]:
                 img_keys.append('bg_perturbed')
-            
+
             img_keys.append(f'mask')
             img_keys.append(f'fg')
             img_keys.append(f'fgmask')
@@ -271,18 +282,18 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
                     rendered, perturbed, X = generator(
                         fnoise, step=step, alpha=alpha
                     )
-                    
+
                     img_dict['rendered'].append(rendered.data.cpu())
                     img_dict['bg'].append(X[0].data.cpu())
                     fg, mask = X[1]
-                    
+
                     img_dict[f'fg'].append(fg.data.cpu())
                     img_dict[f'mask'].append(mask.data.cpu())
                     img_dict[f'fgmask'].append((fg * mask).data.cpu())
-                    
+
                     if perturbed_outputs[0]:
                         img_dict['bg_perturbed'].append(perturbed[0].data.cpu())
-                    
+
                     if perturbed_outputs[1]:
                         fg, mask = perturbed[1]
                         img_dict[f'fg_perturbed'].append(fg.data.cpu())
@@ -296,7 +307,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
                     img_dict['rendered_running'].append(rendered.data.cpu())
                     img_dict['bg_running'].append(X[0].data.cpu())
                     fg, mask = X[1]
-                    
+
                     img_dict[f'fg_running'].append(fg.data.cpu())
                     img_dict[f'mask_running'].append(mask.data.cpu())
                     img_dict[f'fgmask_running'].append((fg * mask).data.cpu())
@@ -309,7 +320,8 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             generator.train()
 
         if i % 10000 == 0:
-            save(f'{log_dir}/train_step-{step}_{i}.model', generator, g_running, discriminator, g_optimizer, d_optimizer, alpha, step)
+            save(f'{log_dir}/train_step-{step}_{i}.model', generator, g_running, discriminator, g_optimizer,
+                 d_optimizer, alpha, step)
 
         state_msg = (
             f'Size: {4 * 2 ** step}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
@@ -328,8 +340,10 @@ if __name__ == '__main__':
     """ Data details"""
     parser.add_argument('path', type=str, help='path of specified dataset')
     parser.add_argument('--extra_db', type=str, help='extra db to be concatenated')
-    parser.add_argument('-d', '--data', default='folder', type=str, choices=['folder', 'lsun', 'lmdb_resized'], help=('Specify dataset. ' 'Currently Image Folder and LSUN is supported'))
-    parser.add_argument('--org_to_crop', default=1., type=float, help='the image will be resized to org_to_crop*image_size, then image_size random crops are taken')
+    parser.add_argument('-d', '--data', default='folder', type=str, choices=['folder', 'lsun', 'lmdb_resized'],
+                        help=('Specify dataset. ' 'Currently Image Folder and LSUN is supported'))
+    parser.add_argument('--org_to_crop', default=1.125, type=float,
+                        help='the image will be resized to org_to_crop*image_size, then image_size random crops are taken')
     parser.add_argument('--max_images', default=100000, type=int, help='max number of images')
     parser.add_argument('--num_workers', type=int, default=32)
 
@@ -356,29 +370,29 @@ if __name__ == '__main__':
     parser.add_argument('--mlp_mult', default=0.01, type=float)
 
     """ Mask loss parameters """
-    parser.add_argument('--min_mask_coverage', default=0.05, type=float)
+    parser.add_argument('--min_mask_coverage', default=0.25, type=float)
     parser.add_argument('--mask_alpha', default=2.0, type=float)
     parser.add_argument('--binarization_alpha', default=2.0, type=float)
 
     """ Perturbers """
-    parser.add_argument('--location_jitter', default=0., type=float, help='location will be jittered by jitter*imagesize')
-    parser.add_argument('--bg_contrast_jitter', default=0., type=float)
-    
-    parser.add_argument('--checkpoint', default=None)
+    parser.add_argument('--location_jitter', default=0.125, type=float,
+                        help='location will be jittered by jitter*imagesize')
+    parser.add_argument('--bg_contrast_jitter', default=0.3, type=float)
 
+    parser.add_argument('--checkpoint', default=None)
 
     args = parser.parse_args()
 
-    sample_data = partial(sample_data, resized_db=args.data=='lmdb_resized')
+    sample_data = partial(sample_data, resized_db=args.data == 'lmdb_resized')
 
     n_critic = args.n_critic
     print('args parsed')
-    
+
     log_dir = mlflow.get_artifact_uri().replace('file://', '')
     with open(os.path.join(log_dir, 'run.txt'), 'w') as f:
         f.write(' '.join(sys.argv))
 
-    device = torch.device("cuda:0")
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     ### Set up the StyleGAN model
     n_mlp = args.n_mlp
@@ -392,7 +406,7 @@ if __name__ == '__main__':
 
     generator = generator.to(device)
     discriminator = Discriminator(in_channels=3).to(device)
-    
+
     g_running = deepcopy(generator).to(device)
     g_running.train(False)
 
@@ -404,11 +418,12 @@ if __name__ == '__main__':
     ### Set up perturbers
     perturbers = []
     if args.location_jitter > 0.:
-        location_noise_fn = lambda *size, resolution, device=torch.device('cpu'): 2*args.location_jitter*resolution*torch.rand(*size, device=device)-args.location_jitter*resolution
+        location_noise_fn = lambda *size, resolution, device=torch.device('cpu'): \
+            2 * args.location_jitter * resolution * torch.rand(*size, device=device) - args.location_jitter * resolution
         perturbers.append(RandomShift(location_noise_fn))
     if args.bg_contrast_jitter > 0.:
         perturbers.append(BgContrastJitter(args.bg_contrast_jitter))
-    
+
     perturber = CompositePerturber(*perturbers) if len(perturbers) > 0 else None
     print('Perturbers initialized: ', ', '.join([p.__class__.__name__ for p in perturbers]))
 
@@ -452,16 +467,17 @@ if __name__ == '__main__':
         step = None
 
     ### Set up data
-    if args.data == 'folder':
-        dataset = datasets.ImageFolder(args.path)
-
-    elif args.data == 'lsun':
-        dataset = LSUNClass(args.path, target_transform=lambda x: 0, max_images=args.max_images)
-        if args.extra_db:
-            dataset2 = LSUNClass(args.extra_db, target_transform=lambda x: 0, max_images=args.max_images)
-            dataset = ConcatDataset((dataset, dataset2))
-    elif args.data == 'lmdb_resized':
-        dataset = MultiResolutionDataset(args.path, None)
+    dataset, _ = dataloader.build("FashionMNIST", 32, 32, shadow_px=0)
+    # if args.data == 'folder':
+    #     dataset = datasets.ImageFolder(args.path)
+    #
+    # elif args.data == 'lsun':
+    #     dataset = LSUNClass(args.path, target_transform=lambda x: 0, max_images=args.max_images)
+    #     if args.extra_db:
+    #         dataset2 = LSUNClass(args.extra_db, target_transform=lambda x: 0, max_images=args.max_images)
+    #         dataset = ConcatDataset((dataset, dataset2))
+    # elif args.data == 'lmdb_resized':
+    #     dataset = MultiResolutionDataset(args.path, None)
     print('Dataset initialized')
 
     ### Set up training
@@ -486,7 +502,6 @@ if __name__ == '__main__':
     logger = CombinedLogger(loggers)
     logger.log_params(args)
 
-
     ### Backup code
     code_dir = os.path.join(log_dir, 'code')
     os.mkdir(code_dir)
@@ -495,4 +510,5 @@ if __name__ == '__main__':
         shutil.copyfile(file, os.path.join(code_dir, file))
 
     print('Starting training...')
-    train(args, dataset, gen_wrapped, g_running_wrapped, discriminator, mask_loss_fn=mask_loss_fn, logger=logger, log_dir=log_dir, step=step)
+    train(args, dataset, gen_wrapped, g_running_wrapped, discriminator, mask_loss_fn=mask_loss_fn, logger=logger,
+          log_dir=log_dir, step=step)
