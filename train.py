@@ -151,7 +151,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
         try:
             real_image, label = next(data_loader)
         except (OSError, StopIteration):
-            data_loader, label = iter(dataset)
+            data_loader = iter(dataset)
             real_image, label = next(data_loader)
 
         used_sample += real_image.shape[0]
