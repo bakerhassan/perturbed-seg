@@ -3,7 +3,7 @@ import random
 import math
 from functools import partial
 
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, DataLoader
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
@@ -13,6 +13,7 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torch.autograd import Variable, grad
 
+from data_loaders.dataset import TextureForeground, TextureMNIST_V2
 from utils import TensorboardLogger, MLFlowLogger, CombinedLogger
 from utils import LSUNClass
 from data import sample_data, MultiResolutionDataset
@@ -56,7 +57,7 @@ def get_first_n_images(loader, n_images):
     while n < n_images:
         samples.append(next(iter_)[0])
         n += len(samples[-1])
-    real_samples = torch.cat(samples, dim=0)[:n_images]
+    real_samples = torch.concatenate(samples, dim=0)[:n_images]
     return real_samples
 
 
@@ -83,12 +84,16 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
     if step is None:
         step = int(math.log2(args.init_size)) - 2
     resolution = 4 * 2 ** step
-    loader = sample_data(
-        dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
-        org_to_crop=args.org_to_crop,
-        shuffle=True, drop_last=False
-    )
-    data_loader = iter(loader)
+
+    if not (isinstance(dataset, DataLoader)):
+        loader = sample_data(
+            dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
+            org_to_crop=args.org_to_crop,
+            shuffle=True, drop_last=False
+        )
+        data_loader = iter(loader)
+    else:
+        data_loader = iter(dataset)
 
     # log_real_images(loader, logger, 0, step)
 
@@ -110,12 +115,13 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
 
     gan_sampler_ = NormalNoiseSampler()
     gan_sampler = lambda bsize: gan_sampler_(b_size, code_size)
-    real_samples = get_first_n_images(loader, 64)
+    real_samples = get_first_n_images(data_loader, 64)
     logger.log_images(real_samples, tag='real_samples', step=0, epoch=step)
     gen_i, gen_j = 8, 8
     fixed_noise = [torch.randn(gen_j, code_size).to(device) for _ in range(gen_i)]
 
     for i in pbar:
+
         d_optimizer.zero_grad()
 
         alpha = min(1., 1. / args.phase * (used_sample + 1)) if resolution != args.init_size else 1.
@@ -133,13 +139,11 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
 
             resolution = 4 * 2 ** step
 
-            loader = sample_data(
-                dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
-                org_to_crop=args.org_to_crop, drop_last=False,
-            )
-            log_real_images(loader, logger, i, step)
-
-            data_loader = iter(loader)
+            # loader = sample_data(
+            #     dataset, args.batch.get(resolution, args.batch_default), resolution, num_workers=args.num_workers,
+            #     org_to_crop=args.org_to_crop, drop_last=False,
+            # )
+            log_real_images(data_loader, logger, i, step)
             adjust_lr(g_optimizer, args.lr.get(resolution, 0.001))
             adjust_lr(d_optimizer, args.lr_disc_mult * args.lr.get(resolution, 0.001))
 
@@ -147,7 +151,8 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
         try:
             real_image, label = next(data_loader)
         except (OSError, StopIteration):
-            data_loader = iter(loader)
+            data_loader, label = iter(loader)
+            label = 10
             real_image, label = next(data_loader)
 
         used_sample += real_image.shape[0]

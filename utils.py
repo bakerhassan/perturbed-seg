@@ -202,7 +202,7 @@ class TensorboardLogger:
 
     def log_images(self, images, step=None, epoch=None, tag='fake_images', range=(-1, 1)):
         """images is batch of images"""
-        grid = make_grid(images, nrow=int(sqrt(len(images))), padding=2, normalize=True, range=range, scale_each=False)
+        grid = make_grid(images, nrow=int(sqrt(len(images))), padding=2, normalize=True, value_range=range, scale_each=False)
         self.writer.add_image(tag, grid, step)
         # self.writer.add_image(tag+'_epoch', grid, epoch)
 

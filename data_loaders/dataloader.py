@@ -24,7 +24,7 @@ def build(foreground_type, batch_size, test_batch_size, shadow_px=0):
 
     transform = T.Compose([
         T.GaussianBlur(kernel_size=3, sigma=1),
-        T.ToTensor(),
+        T.Resize(8)
     ])
     tp = Path(os.getcwd()).joinpath('data/textures')
     textures, _ = utils.load_textures(tp)

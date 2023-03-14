@@ -53,7 +53,7 @@ class TextureForeground():
         self.transform = instance.transform
         self.target_transform = instance.target_transform
         self.shadow_px = shadow_px
-        self.images = F.resize(self.data, size=im_size,interpolation=T.InterpolationMode.NEAREST)
+        self.images = F.resize(self.data, size=im_size, interpolation=T.InterpolationMode.NEAREST)
         self.n_texture_only = self.images.shape[0]
         self.rng = utils.check_rng(rng)
         self.textures = textures
@@ -94,12 +94,9 @@ class TextureForeground():
                                  interpolation=T.InterpolationMode.NEAREST) == 0).long()
             else:
                 mask = torch.ones((1,) + self.im_size).long()
-
+                img = torch.repeat_interleave(mask[None, ::], 3, axis=0)
         img, target = self.images[index], self.targets[index]
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        img = Image.fromarray(img.numpy(), mode='L')
+        img = torch.repeat_interleave(img[None, ::], 3, axis=0)
 
         if self.transform is not None:
             img = self.transform(img)
@@ -107,8 +104,8 @@ class TextureForeground():
         if self.target_transform:
             target = self.target_transform(target)
         if not self.train:
-            return img, target, mask
-        return img, target
+            return img.float(), target, mask.float()
+        return img.float(), target
 
     def __len__(self):
         return len(self.images)
