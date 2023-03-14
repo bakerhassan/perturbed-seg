@@ -151,7 +151,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
         try:
             real_image, label = next(data_loader)
         except (OSError, StopIteration):
-            data_loader, label = iter(loader)
+            data_loader, label = iter(data_loader)
             label = 10
             real_image, label = next(data_loader)
 
