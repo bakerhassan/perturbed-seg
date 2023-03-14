@@ -57,7 +57,7 @@ def get_first_n_images(loader, n_images):
     while n < n_images:
         samples.append(next(iter_)[0])
         n += len(samples[-1])
-    real_samples = torch.concatenate(samples, dim=0)[:n_images]
+    real_samples = torch.concat(samples, dim=0)[:n_images]
     return real_samples
 
 
