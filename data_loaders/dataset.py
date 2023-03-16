@@ -100,12 +100,12 @@ class TextureForeground():
 
         if self.transform is not None:
             img = self.transform(img)
-        img /= 255
+        img = img / 255.0
         if self.target_transform:
             target = self.target_transform(target)
         if not self.train:
-            return img.float(), target, mask.float()
-        return img.float(), target
+            return img, target, mask.float()
+        return img, target
 
     def __len__(self):
         return len(self.images)
