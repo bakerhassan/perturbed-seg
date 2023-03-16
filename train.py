@@ -337,7 +337,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
 
 if __name__ == '__main__':
     code_size = 512
-    batch_size = 32
+    batch_size = 16
 
     parser = argparse.ArgumentParser(description='Progressive Growing of GANs')
 
@@ -514,6 +514,6 @@ if __name__ == '__main__':
         shutil.copyfile(file, os.path.join(code_dir, file))
 
     print('Starting training...')
-    step = 5
+    step = 3
     train(args, dataset, gen_wrapped, g_running_wrapped, discriminator, mask_loss_fn=mask_loss_fn, logger=logger,
           log_dir=log_dir, step=step)
