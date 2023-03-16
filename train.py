@@ -514,5 +514,6 @@ if __name__ == '__main__':
         shutil.copyfile(file, os.path.join(code_dir, file))
 
     print('Starting training...')
+    step = 5
     train(args, dataset, gen_wrapped, g_running_wrapped, discriminator, mask_loss_fn=mask_loss_fn, logger=logger,
           log_dir=log_dir, step=step)
