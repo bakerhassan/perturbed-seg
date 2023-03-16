@@ -100,7 +100,7 @@ class TextureForeground():
 
         if self.transform is not None:
             img = self.transform(img)
-
+        img /= 255
         if self.target_transform:
             target = self.target_transform(target)
         if not self.train:
