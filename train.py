@@ -119,14 +119,13 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
     logger.log_images(real_samples, tag='real_samples', step=0, epoch=step)
     gen_i, gen_j = 8, 8
     fixed_noise = [torch.randn(gen_j, code_size).to(device) for _ in range(gen_i)]
-
     if os.path.exists('./results/train.model'):
         loaded_models = torch.load('./results/train.model')
         generator.module.generator.load_state_dict(loaded_models['generator'])
-        discriminator.load_state_dict(loaded_models['discriminator'])
+        discriminator.module.load_state_dict(loaded_models['discriminator'])
         g_optimizer.load_state_dict(loaded_models['g_optimizer'])
         d_optimizer.load_state_dict(loaded_models['d_optimizer'])
-        g_running.load_state_dict(loaded_models['generator_running'])
+        g_running.generator.load_state_dict(loaded_models['generator_running'])
         alpha = loaded_models['alpha']
         step = loaded_models['step']
 
