@@ -120,6 +120,16 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
     gen_i, gen_j = 8, 8
     fixed_noise = [torch.randn(gen_j, code_size).to(device) for _ in range(gen_i)]
 
+    if os.path.exists('./results/train.model'):
+        loaded_models = torch.load('./results/train.model')
+        generator.module.generator.load_state_dict(loaded_models['generator'])
+        discriminator.load_state_dict(loaded_models['discriminator'])
+        g_optimizer.load_state_dict(loaded_models['g_optimizer'])
+        d_optimizer.load_state_dict(loaded_models['d_optimizer'])
+        g_running.load_state_dict(loaded_models['generator_running'])
+        alpha = loaded_models['alpha']
+        step = loaded_models['step']
+
     for i in pbar:
 
         d_optimizer.zero_grad()
@@ -128,7 +138,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
 
         if used_sample > args.phase * 2:
             step += 1
-            save(f'{log_dir}/train_step-{step}.model', generator, g_running, discriminator, g_optimizer, d_optimizer,
+            save(f'./results/train.model', generator, g_running, discriminator, g_optimizer, d_optimizer,
                  alpha, step - 1)
 
             if step > int(math.log2(args.max_size)) - 2:
@@ -210,7 +220,6 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             grad_penalty.backward()
             grad_loss_val = grad_penalty.item()
 
-            metrics['Dstep_D_Gz'] = fake_predict.item()
             metrics['lossD_fake'] = fake_predict.item()
             metrics['lossD'] = fake_predict.item() - real_predict.item()
             metrics['grad_penalty'] = grad_loss_val
@@ -324,7 +333,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
             generator.train()
 
         if i % 10000 == 0:
-            save(f'{log_dir}/train_step-{step}_{i}.model', generator, g_running, discriminator, g_optimizer,
+            save(f'./results/train.model', generator, g_running, discriminator, g_optimizer,
                  d_optimizer, alpha, step)
 
         state_msg = (
@@ -471,7 +480,16 @@ if __name__ == '__main__':
         step = None
 
     ### Set up data
-    dataset, _ = dataloader.build("FashionMNIST", 32, 32, shadow_px=0)
+    training_data_path = './results/training_dataset'
+    testing_data_path = './results/testing_dataset'
+    if not os.path.exists(training_data_path) and not os.path.exists(testing_data_path):
+        dataset, testing_dataset = dataloader.build("FashionMNIST", 32, 32, shadow_px=0)
+        torch.save(dataset, training_data_path)
+        torch.save(testing_dataset, testing_data_path)
+    else:
+        dataset = torch.load(training_data_path)
+        testing_dataset = torch.load(testing_data_path)
+
     # if args.data == 'folder':
     #     dataset = datasets.ImageFolder(args.path)
     #
