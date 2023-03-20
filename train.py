@@ -334,6 +334,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
         if i % 1000 == 0:
             save(f'./results/train.model', generator, g_running, discriminator, g_optimizer,
                  d_optimizer, alpha, step)
+            print(f'models are saved, i:{i}')
 
         state_msg = (
             f'Size: {4 * 2 ** step}; G: {gen_loss_val:.3f}; D: {disc_loss_val:.3f};'
