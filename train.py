@@ -331,7 +331,7 @@ def train(args, dataset, generator, g_running, discriminator, mask_loss_fn, logg
                     logger.log_images(torch.cat(imgs, 0), i, step, key, range=range_)
             generator.train()
 
-        if i % 10000 == 0:
+        if i % 1000 == 0:
             save(f'./results/train.model', generator, g_running, discriminator, g_optimizer,
                  d_optimizer, alpha, step)
 
