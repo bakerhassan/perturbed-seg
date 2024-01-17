@@ -342,7 +342,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Progressive Growing of GANs')
 
     """ Data details"""
-    parser.add_argument('path', type=str, help='path of specified dataset')
+    # parser.add_argument('path', type=str, help='path of specified dataset')
     parser.add_argument('--extra_db', type=str, help='extra db to be concatenated')
     parser.add_argument('-d', '--data', default='folder', type=str, choices=['folder', 'lsun', 'lmdb_resized'],
                         help=('Specify dataset. ' 'Currently Image Folder and LSUN is supported'))
