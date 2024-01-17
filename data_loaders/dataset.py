@@ -32,7 +32,7 @@ class TextureForeground():
                  root,
                  textures,
                  foreground='MNIST-V1',
-                 im_size=(90, 90),
+                 im_size=(64, 64),
                  shadow_px=None,
                  train=True,
                  rng=None,

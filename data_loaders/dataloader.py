@@ -23,7 +23,6 @@ def build(foreground_type, batch_size, test_batch_size, shadow_px=0):
         test_kwargs.update(cuda_kwargs)
 
     transform = T.Compose([
-        T.GaussianBlur(kernel_size=3, sigma=1),
         T.Resize(64)
     ])
     tp = Path(os.getcwd()).joinpath('data/textures')
