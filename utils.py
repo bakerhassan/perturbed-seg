@@ -238,14 +238,14 @@ class MLFlowLogger:
         save_image(images.detach(),
                    fake_samples_file,
                    normalize=True,
-                   range=range)
+                   value_range=range)
 
     def log_images_once(self, images, tag, range=(-1, 1)):
         fake_samples_file = '{}/{}.png'.format(self.log_dir, tag)
         save_image(images.detach(),
                    fake_samples_file,
                    normalize=True,
-                   range=range)
+                   value_range=range)
 
     def log_histogram(self, values, step=None, epoch=None, tag=None):
         pass
