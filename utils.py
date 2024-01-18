@@ -207,7 +207,7 @@ class TensorboardLogger:
         # self.writer.add_image(tag+'_epoch', grid, epoch)
 
     def log_images_once(self, images, tag, range=(-1, 1)):
-        grid = make_grid(images, nrow=int(sqrt(len(images))), padding=2, normalize=True, range=range,
+        grid = make_grid(images, nrow=int(sqrt(len(images))), padding=2, normalize=True, value_range=range,
                          scale_each=False)
         self.writer.add_image(tag, grid)
 
