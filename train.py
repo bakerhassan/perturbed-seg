@@ -55,7 +55,8 @@ def get_first_n_images(loader, n_images):
     samples = []
     iter_ = iter(loader)
     while n < n_images:
-        img, texture, mask, texture_label, target = next(iter_)
+        img, target = next(iter_)
+        print(f'fg imgs selected are {(target <= 9).sum()} out of {img.shape[0]}')
         samples.append(img[target <= 9])
         n += len(samples[-1])
     real_samples = torch.concat(samples, dim=0)[:n_images]
