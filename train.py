@@ -475,7 +475,7 @@ if __name__ == '__main__':
     training_data_path = './results/training_dataset'
     testing_data_path = './results/testing_dataset'
     if not os.path.exists(training_data_path) and not os.path.exists(testing_data_path):
-        dataset, testing_dataset = dataloader.build("MNIST", 32, 32, shadow_px=0)
+        dataset, testing_dataset = dataloader.build("MNIST-V1", 32, 32, shadow_px=0)
         torch.save(dataset, training_data_path)
         torch.save(testing_dataset, testing_data_path)
     else:
