@@ -206,7 +206,7 @@ class TextureMNIST_V2(MNIST):
 
 
 DATASETS = {
-    'MNIST-V1': TextureForeground,
+    'MNIST': TextureForeground,
     'MNIST-V2': TextureMNIST_V2,
     'FashionMNIST': TextureForeground
 }
